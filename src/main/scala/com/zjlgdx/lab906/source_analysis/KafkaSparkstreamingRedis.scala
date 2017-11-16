@@ -99,8 +99,8 @@ object KafkaSparkstreamingRedis {
             val key:Date = dateFormat.parse(time)
             onedata.put("time",key.getTime/1000)
             val value = onedata
-            pipline.expire(key.getTime.toString,config.getInt("redis.timeexist"))
             pipline.set("sfhd_origin".concat((key.getTime/1000).toString),value.toString)
+            pipline.expire("sfhd_origin".concat((key.getTime/1000).toString),config.getInt("redis.timeexist"))
             println(key.getTime/1000,value.toString) //"{"T1AMMSTTMP.AV":601.5,"AM23SIG0206.AV":390.4,"AM17CCS06A701.AV":912}"
           }
           pipline.sync()

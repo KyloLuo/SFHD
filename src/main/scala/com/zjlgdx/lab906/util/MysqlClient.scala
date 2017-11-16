@@ -27,7 +27,7 @@ object MysqlClient {
 }
 
   def insertJson(jsonStr:String,tablename:String,conn:Connection):Unit={
-    var sqlStr:String = "insert into "+tablename +"("
+    var sqlStr:String = "insert ignore into "+tablename +"("
     var sqlStr_tail:String = "("
     val json:Option[Any] = JSON.parseFull(jsonStr)
     val kvmap:Map[String,Any] = json.get.asInstanceOf[Map[String, Any]]
@@ -52,7 +52,7 @@ object MysqlClient {
         sqlStr += x+" double(10,3),"
       }
     }
-    sqlStr = sqlStr.substring(0,sqlStr.length-1)+")"
+    sqlStr = sqlStr.substring(0,sqlStr.length-1)+") ENGINE=MYISAM;"
     var i = statement.executeUpdate(sqlStr)
     if(i!=1){
       println("success create table")
