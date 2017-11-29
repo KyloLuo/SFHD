@@ -6,10 +6,13 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="kss_redis_mysql" />
         <module name="SparkExample" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="kss_" target="1.8" />
+      <module name="kss_redis_mysql" target="1.8" />
       <module name="SFHD" target="1.5" />
       <module name="SparkExample" target="1.8" />
     </bytecodeTargetLevel>

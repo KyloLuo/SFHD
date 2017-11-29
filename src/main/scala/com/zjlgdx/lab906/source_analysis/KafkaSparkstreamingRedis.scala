@@ -27,9 +27,8 @@ object KafkaSparkstreamingRedis {
 
     //read config
     //var projectDir = new File("").getCanonicalPath
-    //val config = ConfigFactory.parseFile(new File(projectDir+"/conf/kafka_spark_streaming_redis.properties"))
+    //val config = ConfigFactory.parseFile(new File(projectDir+"/conf/conf/kafka_spark_streaming_redis_mysql.properties"))
     val config = ConfigFactory.parseFile(new File(args(0)))
-
 
     val conf = new SparkConf().setAppName(config.getString("app.name")).setMaster(config.getString("master"))
     val ssc = new StreamingContext(conf,Seconds(config.getInt("streaming.seconds")))

@@ -10,33 +10,43 @@ import org.apache.spark.SparkConf
 import org.apache.spark.streaming.dstream.InputDStream
 import org.apache.spark.streaming.kafka.{HasOffsetRanges, KafkaUtils, OffsetRange}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
-import com.zjlgdx.lab906.util.MysqlClient
-import java.sql.{Connection, DriverManager, ResultSet}
+import com.zjlgdx.lab906.util.RedisConnPool1
 import java.util.Date
 import java.text.SimpleDateFormat
 import java.io.File
-
+import org.apache.log4j.Logger
 import com.typesafe.config.ConfigFactory
-import org.apache.spark.rdd.RDD
-object KafkaSparkstreamingMysql {
+import redis.clients.jedis.Jedis
+
+object KafkaSparkstreamingRedis1 {
   def main(args: Array[String]): Unit = {
 
+    @transient lazy val logger = Logger.getLogger(getClass.getName)
+
     //本地测试
-    //val config = ConfigFactory.parseFile(new File("conf/kafka_spark_streaming_redis_mysql.properties"))
+    //val config = ConfigFactory.parseFile(new File("conf/conf/kafka_spark_streaming_redis_mysql.properties"))
 
 
     //读取配置文件(spark-submit jar)
     val config = ConfigFactory.parseFile(new File(args(0)))
 
-    //mysql configuration
-    val url = "jdbc:mysql://"+config.getString("mysql.host")+":"+config.getInt("mysql.port") +"/"+
-               config.getString("mysql.database")+"?"+"user="+config.getString("mysql.user")+"&"+
-               "password="+config.getString("mysql.passwd")+"&useSSL=false"
-
+    //Create a StreamingContext
     val conf = new SparkConf().setAppName(config.getString("app.name")).setMaster(config.getString("master"))
     val ssc = new StreamingContext(conf,Seconds(config.getInt("streaming.seconds")))
 
+    //获取redis相关配置,包装成broadcast
+    var redisConfig:Map[String,String] = Map()
+    var iter = config.entrySet().iterator()
+    while (iter.hasNext) {
+      val itemConfig = iter.next()
+      if(itemConfig.getKey.startsWith("redis.")){
+        redisConfig += (itemConfig.getKey -> itemConfig.getValue.unwrapped().toString)
+      }
+    }
+    val redisConfigBroadcast = ssc.sparkContext.broadcast(redisConfig)
+
     //Kafka相关配置
+
     val topic = Set(config.getString("topic.name"))
     val brokers = config.getString("kafka.metadata.broker.list")
     val kafkaParams = Map[String,String](
@@ -46,9 +56,11 @@ object KafkaSparkstreamingMysql {
     val topicDirs = new ZKGroupTopicDirs(config.getString("kafka.consumer.group.id"),config.getString("topic.name"))
     val zKClient = new ZkClient(config.getString("kafka.zk.list"),Integer.MAX_VALUE,Integer.MAX_VALUE,ZKStringSerializer)
     val children = zKClient.countChildren(topicDirs.consumerOffsetDir)
+
     //topicDirs.consumerOffsetDir:/consumers/test-consumer-group/offsets/test
 
     var messages:InputDStream[(String,String)] = null
+
 
     if(children>0){
       var fromOffsets:Map[TopicAndPartition,Long] = Map()
@@ -88,29 +100,30 @@ object KafkaSparkstreamingMysql {
       printf("====================%s===================",now)
       println()
       rdd.foreachPartition(records=>{
-        var conn:Connection = null
+        RedisConnPool1.makePool(redisConfigBroadcast.value)
+        var jedis:Jedis = null
         try{
-          if(records.hasNext){
-            conn = MysqlClient.getConnection(url)
-          }
+          jedis = RedisConnPool1.getPool.getResource
+          val pipline = jedis.pipelined()
+
           for(item <- records){
             val onedata = JSON.parseObject(item._2)
             val time = onedata.getString("time")
             val key:Date = dateFormat.parse(time)
             onedata.put("time",key.getTime/1000)
             val value = onedata
+            pipline.set("sfhd_origin_".concat((key.getTime/1000).toString),value.toString)
+            pipline.expire("sfhd_origin_".concat((key.getTime/1000).toString),config.getInt("redis.timeexist"))
+            println("write redis sceessfully!")
+            //logger.info("write successfully!")
             //println(key.getTime/1000,value.toString) //"{"T1AMMSTTMP.AV":601.5,"AM23SIG0206.AV":390.4,"AM17CCS06A701.AV":912}"
-            if(MysqlClient.judgeNoTable(config.getString("mysql.table"),conn)){
-              val jsonStr = JSON.parseObject(item._2).toString
-              MysqlClient.createTable(jsonStr,config.getString("mysql.table"),conn)
-              conn = MysqlClient.getConnection(url)
-            }
-            MysqlClient.insertJson(value.toString,config.getString("mysql.table"),conn)
-            println("insert %s successfully!",config.getString("mysql.table"))
-         }
+          }
+          pipline.sync()
         }finally {
-          if(conn!=null)
-            conn.close()
+          if(jedis!=null){
+            jedis.close()
+            //logger.info("fail to write redis!!!!!!")
+          }
         }
       })
     })

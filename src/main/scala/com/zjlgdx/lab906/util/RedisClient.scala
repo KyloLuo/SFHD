@@ -9,7 +9,7 @@ object RedisClient extends Serializable{
 
   //read config
   //var projectDir = new File("").getCanonicalPath
-  //val config = ConfigFactory.parseFile(new File(projectDir+"/conf/kafka_spark_streaming_redis.properties"))
+  //val config = ConfigFactory.parseFile(new File(projectDir+"/conf/conf/kafka_spark_streaming_redis_mysql.properties"))
   //val config = ConfigFactory.parseFile(new File(args(0)))
   //val redisHost = "192.168.1.245"
   //val redisport = 6399
