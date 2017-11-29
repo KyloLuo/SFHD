@@ -1,2 +1,9 @@
-KafkaSparkstreamingRedis以及KafkaSparkstreamingMysql实时数据处理！
+KafkaSparkstreamingRedis以及KafkaSparkstreamingMysql实时数据处理相关代码实现
+
+注：
+redis实时处理这块优先参考KafkaSparkstreamingRedis1.scala和RedisConnPool1.scala
+如想要下载项目，直接导入idea使用：
+1.idea配置下自己maven位置
+2.需要有Scala插件
+3.配置kafka_spark_streaming_redis_mysql.properties,即需要自己kafka，zk，redis，mysql环境（本项目这些环境均利用docker实现）
 
